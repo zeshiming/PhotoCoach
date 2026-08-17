@@ -153,6 +153,11 @@ form.addEventListener("submit", async (event) => {
   appendUserMessage(text || "请分析这张照片", selectedFile);
   const loading = appendLoading(); sendButton.disabled = true;
   const formData = new FormData(); formData.append("message", text); formData.append("session_id", sessionId); if (selectedFile) formData.append("image", selectedFile);
+  // FormData 已经持有本轮文件对象，发送请求前立即清空输入区，
+  // 避免等待模型响应时用户误以为消息还未发送。
+  messageInput.value = "";
+  imageInput.value = "";
+  setImage(null);
   try {
     const response = await fetch("/api/v1/chat", { method: "POST", body: formData });
     const payload = await response.json(); loading.remove();
@@ -160,7 +165,6 @@ form.addEventListener("submit", async (event) => {
     appendAssistantMessage(payload.answer, `session ${payload.session_id} · trace ${payload.trace_id.slice(0, 8)}`);
     clearWelcome();
     await loadSessions();
-    messageInput.value = ""; imageInput.value = ""; setImage(null);
   } catch (error) { loading.remove(); appendAssistantMessage(`请求失败：${error.message}`); }
   finally { sendButton.disabled = false; }
 });
