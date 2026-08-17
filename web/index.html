@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PhotoCoach</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header>
+        <p class="eyebrow">PHOTOCOACH · AGENTS SDK</p>
+        <h1>你的摄影助手</h1>
+        <p class="subtitle">可以直接提问，也可以上传照片进行构图、光线和曝光分析。</p>
+      </header>
+
+      <section id="messages" class="messages" aria-live="polite">
+        <div class="message assistant">你好！发一个摄影问题，或上传照片让我帮你分析。</div>
+      </section>
+
+      <form id="chat-form" class="composer">
+        <label class="session-label">
+          会话 ID
+          <input id="session-id" type="text" autocomplete="off" />
+        </label>
+        <textarea id="message" rows="3" placeholder="例如：这张照片为什么脸部偏暗？"></textarea>
+        <div class="composer-row">
+          <label class="file-button">
+            <span>选择图片</span>
+            <input id="image" type="file" accept="image/*" />
+          </label>
+          <span id="file-name" class="file-name">未选择图片</span>
+          <button id="send" type="submit">发送</button>
+        </div>
+      </form>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

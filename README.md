@@ -21,3 +21,18 @@ Agents SDK Agent + Runner → Pydantic Tool Schema → GLM-4V 图片工具
 ```
 
 真实模型配置位于本地 `.env`，不提交 API Key。旧的关键词和 embedding 路由保存在 `archive/legacy-routing-v0/`，仅用于回顾和对比。底层 Provider 代码仍保留，用于多 Provider 适配和对照测试。
+
+## 启动 FastAPI 和前端
+
+```bash
+cd ~/Desktop/PhotoCoach
+PYTHONPATH=. .venv/bin/uvicorn photo_coach.api:app --reload
+```
+
+打开：<http://127.0.0.1:8000>
+
+接口：
+
+- `GET /health`：健康检查
+- `POST /api/v1/chat`：文字和图片对话，表单字段为 `message`、`session_id`、`image`
+- `GET /docs`：FastAPI 自动生成的接口文档

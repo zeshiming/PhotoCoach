@@ -1,0 +1,28 @@
+:root {
+  color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+  background: #f4f2ee;
+  color: #20201e;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; }
+.app-shell { width: min(860px, 100%); margin: 0 auto; padding: 56px 20px 32px; }
+header { margin-bottom: 28px; }
+.eyebrow { color: #b36336; font-size: 12px; letter-spacing: .16em; font-weight: 700; }
+h1 { margin: 8px 0; font-size: clamp(34px, 7vw, 64px); letter-spacing: -.05em; }
+.subtitle { color: #77736d; margin: 0; }
+.messages { min-height: 420px; padding: 20px 0; }
+.message { max-width: 82%; padding: 14px 16px; margin: 12px 0; border-radius: 18px; white-space: pre-wrap; line-height: 1.65; }
+.message.assistant { background: #fff; box-shadow: 0 8px 24px #3f321514; }
+.message.user { background: #20201e; color: #fff; margin-left: auto; }
+.composer { background: #fff; padding: 16px; border-radius: 20px; box-shadow: 0 12px 32px #3f32151a; }
+.session-label { display: block; color: #77736d; font-size: 12px; margin-bottom: 8px; }
+.session-label input { display: block; width: 100%; border: 0; border-bottom: 1px solid #ddd7ce; padding: 8px 0; outline: 0; }
+textarea { width: 100%; resize: vertical; border: 0; outline: 0; font: inherit; padding: 12px 0; }
+.composer-row { display: flex; align-items: center; gap: 12px; }
+.file-button { cursor: pointer; border: 1px solid #ddd7ce; border-radius: 999px; padding: 9px 14px; font-size: 13px; }
+.file-button input { display: none; }
+.file-name { color: #8f8a82; font-size: 13px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button { border: 0; border-radius: 999px; background: #b36336; color: #fff; padding: 10px 20px; cursor: pointer; font-weight: 700; }
+button:disabled { opacity: .5; cursor: wait; }
