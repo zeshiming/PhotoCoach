@@ -49,6 +49,11 @@ class SessionMessages(BaseModel):
     messages: list[dict[str, str]]
 
 
+class DeleteSessionResponse(BaseModel):
+    session_id: str
+    deleted: bool
+
+
 app = FastAPI(
     title="PhotoCoach API",
     version="0.3.0",
@@ -161,6 +166,31 @@ async def session_messages(session_id: str) -> SessionMessages:
         if role and text:
             messages.append({"role": role, "content": text})
     return SessionMessages(session_id=safe_session_id, messages=messages)
+
+
+@app.delete("/api/v1/sessions/{session_id}", response_model=DeleteSessionResponse)
+async def delete_session(session_id: str) -> DeleteSessionResponse:
+    safe_session_id = _safe_session_id(session_id)
+    if not SESSION_DB.exists():
+        return DeleteSessionResponse(session_id=safe_session_id, deleted=False)
+    try:
+        conn = sqlite3.connect(str(SESSION_DB))
+        exists = conn.execute(
+            "SELECT 1 FROM agent_sessions WHERE session_id = ? "
+            "UNION SELECT 1 FROM session_images WHERE session_id = ? LIMIT 1",
+            (safe_session_id, safe_session_id),
+        ).fetchone()
+        if exists is None:
+            conn.close()
+            return DeleteSessionResponse(session_id=safe_session_id, deleted=False)
+        conn.execute("DELETE FROM agent_messages WHERE session_id = ?", (safe_session_id,))
+        conn.execute("DELETE FROM agent_sessions WHERE session_id = ?", (safe_session_id,))
+        conn.execute("DELETE FROM session_images WHERE session_id = ?", (safe_session_id,))
+        conn.commit()
+        conn.close()
+        return DeleteSessionResponse(session_id=safe_session_id, deleted=True)
+    except sqlite3.OperationalError:
+        return DeleteSessionResponse(session_id=safe_session_id, deleted=False)
 
 
 def _safe_session_id(value: str) -> str:

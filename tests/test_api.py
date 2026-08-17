@@ -25,6 +25,11 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["session_id"], "new-session")
 
+    def test_delete_unknown_session_is_safe(self):
+        response = TestClient(app).delete("/api/v1/sessions/not-found")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["deleted"])
+
 
 if __name__ == "__main__":
     unittest.main()

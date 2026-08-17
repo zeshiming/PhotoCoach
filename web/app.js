@@ -30,11 +30,13 @@ messageInput.addEventListener("keydown", (event) => {
 
 function setImage(file) {
   selectedFile = file;
-  if (!file) { preview.hidden = true; inlineName.textContent = "支持 JPG、PNG、WEBP · 最大 10MB"; return; }
+  previewImage.hidden = true;
+  previewImage.removeAttribute("src");
+  if (!file) { preview.hidden = true; fileName.textContent = ""; inlineName.textContent = "支持 JPG、PNG、WEBP · 最大 10MB"; return; }
   // 使用 Data URL，避免 Object URL 在页面状态切换后失效导致破损预览。
   const reader = new FileReader();
-  reader.onload = () => { previewImage.src = reader.result; };
-  reader.onerror = () => { previewImage.removeAttribute("src"); };
+  reader.onload = () => { previewImage.src = reader.result; previewImage.hidden = false; };
+  reader.onerror = () => { previewImage.hidden = true; };
   reader.readAsDataURL(file);
   fileName.textContent = file.name;
   inlineName.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)}MB`;
@@ -56,6 +58,8 @@ function renderSessionList(items) {
     return;
   }
   items.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "session-row";
     const button = document.createElement("button");
     button.type = "button";
     button.className = `session-item ${item.session_id === sessionInput.value ? "active" : ""}`;
@@ -68,7 +72,25 @@ function renderSessionList(items) {
       localStorage.setItem("photocoach-session-id", item.session_id);
       window.location.reload();
     });
-    sessionList.appendChild(button);
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "delete-session";
+    deleteButton.title = "删除会话";
+    deleteButton.textContent = "×";
+    deleteButton.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      if (!window.confirm(`确定删除“${item.title}”吗？`)) return;
+      const response = await fetch(`/api/v1/sessions/${encodeURIComponent(item.session_id)}`, { method: "DELETE" });
+      if (!response.ok) return;
+      if (item.session_id === sessionInput.value) {
+        localStorage.setItem("photocoach-session-id", crypto.randomUUID());
+        window.location.reload();
+      } else {
+        await loadSessions();
+      }
+    });
+    row.append(button, deleteButton);
+    sessionList.appendChild(row);
   });
 }
 
