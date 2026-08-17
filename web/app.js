@@ -1,52 +1,68 @@
 const sessionInput = document.querySelector("#session-id");
 const messageInput = document.querySelector("#message");
 const imageInput = document.querySelector("#image");
-const fileName = document.querySelector("#file-name");
 const form = document.querySelector("#chat-form");
 const messages = document.querySelector("#messages");
 const sendButton = document.querySelector("#send");
+const preview = document.querySelector("#attachment-preview");
+const previewImage = document.querySelector("#preview-image");
+const fileName = document.querySelector("#file-name");
+const inlineName = document.querySelector("#file-name-inline");
+const removeImage = document.querySelector("#remove-image");
+
+let selectedFile = null;
+let previewUrl = null;
 
 sessionInput.value = localStorage.getItem("photocoach-session-id") || crypto.randomUUID();
+sessionInput.addEventListener("change", () => { sessionInput.value = sessionInput.value.trim() || crypto.randomUUID(); localStorage.setItem("photocoach-session-id", sessionInput.value); });
+document.querySelectorAll("[data-prompt]").forEach((button) => button.addEventListener("click", () => { messageInput.value = button.dataset.prompt; messageInput.focus(); }));
 
-imageInput.addEventListener("change", () => {
-  fileName.textContent = imageInput.files[0]?.name || "未选择图片";
-});
+function setImage(file) {
+  selectedFile = file;
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  if (!file) { preview.hidden = true; inlineName.textContent = "支持 JPG、PNG、WEBP · 最大 10MB"; return; }
+  previewUrl = URL.createObjectURL(file); previewImage.src = previewUrl; fileName.textContent = file.name; inlineName.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)}MB`; preview.hidden = false;
+}
+imageInput.addEventListener("change", () => setImage(imageInput.files[0] || null));
+removeImage.addEventListener("click", () => { imageInput.value = ""; setImage(null); });
 
-function appendMessage(role, text) {
-  const element = document.createElement("div");
-  element.className = `message ${role}`;
-  element.textContent = text;
-  messages.appendChild(element);
-  element.scrollIntoView({ behavior: "smooth", block: "end" });
+function appendUserMessage(text, file) {
+  const element = document.createElement("article"); element.className = "message user-message";
+  if (file) { const image = document.createElement("img"); image.src = URL.createObjectURL(file); image.alt = file.name; element.appendChild(image); }
+  if (text) { const paragraph = document.createElement("p"); paragraph.textContent = text; element.appendChild(paragraph); }
+  messages.appendChild(element); element.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+function appendAssistantMessage(text, meta = "") {
+  const element = document.createElement("article"); element.className = "message assistant-message";
+  const mark = document.createElement("div"); mark.className = "assistant-avatar"; mark.textContent = "✦";
+  const body = document.createElement("div"); body.className = "assistant-body";
+  const paragraph = document.createElement("p"); paragraph.textContent = text; body.appendChild(paragraph);
+  if (meta) { const small = document.createElement("small"); small.textContent = meta; body.appendChild(small); }
+  element.append(mark, body); messages.appendChild(element); element.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+function appendLoading() {
+  const element = document.createElement("article"); element.className = "message assistant-message loading-message";
+  element.innerHTML = '<div class="assistant-avatar">✦</div><div class="loading-dots"><i></i><i></i><i></i></div>';
+  messages.appendChild(element); element.scrollIntoView({ behavior: "smooth", block: "end" }); return element;
 }
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = messageInput.value.trim();
-  const image = imageInput.files[0];
-  if (!text && !image) return;
-
+  if (!text && !selectedFile) return;
   const sessionId = sessionInput.value.trim() || crypto.randomUUID();
-  localStorage.setItem("photocoach-session-id", sessionId);
-  appendMessage("user", image ? `${text || "请分析这张照片"}\n[图片：${image.name}]` : text);
-  sendButton.disabled = true;
-
-  const formData = new FormData();
-  formData.append("message", text);
-  formData.append("session_id", sessionId);
-  if (image) formData.append("image", image);
-
+  sessionInput.value = sessionId; localStorage.setItem("photocoach-session-id", sessionId);
+  appendUserMessage(text || "请分析这张照片", selectedFile);
+  const loading = appendLoading(); sendButton.disabled = true;
+  const formData = new FormData(); formData.append("message", text); formData.append("session_id", sessionId); if (selectedFile) formData.append("image", selectedFile);
   try {
     const response = await fetch("/api/v1/chat", { method: "POST", body: formData });
-    const payload = await response.json();
+    const payload = await response.json(); loading.remove();
     if (!response.ok) throw new Error(payload.detail || "请求失败");
-    appendMessage("assistant", payload.answer);
-    messageInput.value = "";
-    imageInput.value = "";
-    fileName.textContent = "未选择图片";
-  } catch (error) {
-    appendMessage("assistant", `请求失败：${error.message}`);
-  } finally {
-    sendButton.disabled = false;
-  }
+    appendAssistantMessage(payload.answer, `session ${payload.session_id} · trace ${payload.trace_id.slice(0, 8)}`);
+    messageInput.value = ""; imageInput.value = ""; setImage(null);
+  } catch (error) { loading.remove(); appendAssistantMessage(`请求失败：${error.message}`); }
+  finally { sendButton.disabled = false; }
 });
