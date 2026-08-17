@@ -9,19 +9,35 @@ const previewImage = document.querySelector("#preview-image");
 const fileName = document.querySelector("#file-name");
 const inlineName = document.querySelector("#file-name-inline");
 const removeImage = document.querySelector("#remove-image");
+const newSessionButton = document.querySelector("#new-session");
 
 let selectedFile = null;
-let previewUrl = null;
 
 sessionInput.value = localStorage.getItem("photocoach-session-id") || crypto.randomUUID();
 sessionInput.addEventListener("change", () => { sessionInput.value = sessionInput.value.trim() || crypto.randomUUID(); localStorage.setItem("photocoach-session-id", sessionInput.value); });
+newSessionButton.addEventListener("click", () => {
+  localStorage.setItem("photocoach-session-id", crypto.randomUUID());
+  window.location.reload();
+});
 document.querySelectorAll("[data-prompt]").forEach((button) => button.addEventListener("click", () => { messageInput.value = button.dataset.prompt; messageInput.focus(); }));
+messageInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
 
 function setImage(file) {
   selectedFile = file;
-  if (previewUrl) URL.revokeObjectURL(previewUrl);
   if (!file) { preview.hidden = true; inlineName.textContent = "支持 JPG、PNG、WEBP · 最大 10MB"; return; }
-  previewUrl = URL.createObjectURL(file); previewImage.src = previewUrl; fileName.textContent = file.name; inlineName.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)}MB`; preview.hidden = false;
+  // 使用 Data URL，避免 Object URL 在页面状态切换后失效导致破损预览。
+  const reader = new FileReader();
+  reader.onload = () => { previewImage.src = reader.result; };
+  reader.onerror = () => { previewImage.removeAttribute("src"); };
+  reader.readAsDataURL(file);
+  fileName.textContent = file.name;
+  inlineName.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)}MB`;
+  preview.hidden = false;
 }
 imageInput.addEventListener("change", () => setImage(imageInput.files[0] || null));
 removeImage.addEventListener("click", () => { imageInput.value = ""; setImage(null); });

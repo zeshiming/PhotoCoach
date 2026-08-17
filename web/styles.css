@@ -8,6 +8,9 @@ button, input, textarea { font: inherit; } button { cursor: pointer; }
 .brand-copy { display: flex; flex-direction: column; gap: 3px; margin-top: 13px; }.brand-copy strong { font-size: 20px; letter-spacing: -.04em; }.brand-copy span { color: var(--muted); font-size: 12px; }
 .sidebar-divider { height: 1px; background: var(--line); margin: 38px 0 28px; }.sidebar-section { display: flex; flex-direction: column; gap: 10px; }.sidebar-section + .sidebar-section { margin-top: 34px; }
 .section-label, .topbar-kicker, .welcome-eyebrow { font-size: 10px; letter-spacing: .16em; color: var(--muted); font-weight: 800; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.new-session-button { border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--accent); padding: 5px 9px; font-size: 11px; font-weight: 700; }
+.new-session-button:hover { background: var(--accent-soft); border-color: #d5a68c; }
 .session-input { display: flex; flex-direction: column; gap: 7px; }.session-input span { font-size: 9px; color: #aaa49b; letter-spacing: .1em; }.session-input input { background: transparent; border: 0; border-bottom: 1px solid var(--line); outline: 0; color: var(--ink); padding: 8px 0; font-size: 12px; }
 .capability { display: flex; align-items: center; gap: 9px; color: #5f5b54; font-size: 13px; }.capability i { width: 6px; height: 6px; border-radius: 99px; background: var(--accent); }.sidebar-footer { display: flex; align-items: center; gap: 8px; margin-top: auto; color: var(--muted); font-size: 12px; }.online-dot { width: 7px; height: 7px; border-radius: 99px; background: #6db58b; box-shadow: 0 0 0 4px #6db58b22; }
 .workspace { width: min(900px, 100%); margin: 0 auto; padding: 46px clamp(20px, 5vw, 76px) 28px; display: flex; flex-direction: column; min-height: 100vh; }
