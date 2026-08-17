@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#171613" />
     <title>PhotoCoach · 摄影助手</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=4" />
   </head>
   <body>
     <div class="app-layout">
@@ -16,6 +16,7 @@
         <div class="sidebar-section">
           <div class="section-heading"><span class="section-label">当前会话</span><button id="new-session" class="new-session-button" type="button">＋ 新建</button></div>
           <label class="session-input"><span>SESSION</span><input id="session-id" type="text" autocomplete="off" /></label>
+          <div id="session-list" class="session-list" aria-label="历史会话"></div>
         </div>
         <div class="sidebar-section capabilities">
           <span class="section-label">可用能力</span>
@@ -53,6 +54,6 @@
         <p class="composer-hint">PhotoCoach 可能会犯错，请把建议当作摄影参考。</p>
       </main>
     </div>
-    <script src="/app.js"></script>
+    <script src="/app.js?v=4"></script>
   </body>
 </html>

@@ -10,6 +10,7 @@ const fileName = document.querySelector("#file-name");
 const inlineName = document.querySelector("#file-name-inline");
 const removeImage = document.querySelector("#remove-image");
 const newSessionButton = document.querySelector("#new-session");
+const sessionList = document.querySelector("#session-list");
 
 let selectedFile = null;
 
@@ -39,6 +40,63 @@ function setImage(file) {
   inlineName.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)}MB`;
   preview.hidden = false;
 }
+
+function clearWelcome() {
+  document.querySelector(".welcome-card")?.remove();
+  document.querySelector(".prompt-grid")?.remove();
+}
+
+function renderSessionList(items) {
+  sessionList.innerHTML = "";
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "session-empty";
+    empty.textContent = "还没有历史会话";
+    sessionList.appendChild(empty);
+    return;
+  }
+  items.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `session-item ${item.session_id === sessionInput.value ? "active" : ""}`;
+    const title = document.createElement("strong");
+    title.textContent = item.title || "新建会话";
+    const meta = document.createElement("small");
+    meta.textContent = `${item.message_count} 条消息`;
+    button.append(title, meta);
+    button.addEventListener("click", () => {
+      localStorage.setItem("photocoach-session-id", item.session_id);
+      window.location.reload();
+    });
+    sessionList.appendChild(button);
+  });
+}
+
+async function loadSessions() {
+  try {
+    const response = await fetch("/api/v1/sessions?limit=30");
+    if (response.ok) renderSessionList(await response.json());
+  } catch (_) {
+    sessionList.innerHTML = "";
+  }
+}
+
+async function loadCurrentSession() {
+  try {
+    const response = await fetch(`/api/v1/sessions/${encodeURIComponent(sessionInput.value)}/messages`);
+    if (!response.ok) return;
+    const payload = await response.json();
+    if (!payload.messages?.length) return;
+    clearWelcome();
+    payload.messages.forEach((item) => {
+      if (item.role === "user") appendUserMessage(item.content, null);
+      if (item.role === "assistant") appendAssistantMessage(item.content);
+    });
+  } catch (_) {
+    // 历史读取失败不阻断新消息发送。
+  }
+}
+
 imageInput.addEventListener("change", () => setImage(imageInput.files[0] || null));
 removeImage.addEventListener("click", () => { imageInput.value = ""; setImage(null); });
 
@@ -78,7 +136,12 @@ form.addEventListener("submit", async (event) => {
     const payload = await response.json(); loading.remove();
     if (!response.ok) throw new Error(payload.detail || "请求失败");
     appendAssistantMessage(payload.answer, `session ${payload.session_id} · trace ${payload.trace_id.slice(0, 8)}`);
+    clearWelcome();
+    await loadSessions();
     messageInput.value = ""; imageInput.value = ""; setImage(null);
   } catch (error) { loading.remove(); appendAssistantMessage(`请求失败：${error.message}`); }
   finally { sendButton.disabled = false; }
 });
+
+loadSessions();
+loadCurrentSession();

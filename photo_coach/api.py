@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import os
 import re
+import json
+import sqlite3
 import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -20,6 +21,7 @@ from .models import AgentRequest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 UPLOAD_ROOT = PROJECT_ROOT / "data" / "uploads"
 WEB_ROOT = PROJECT_ROOT / "web"
+SESSION_DB = PROJECT_ROOT / "data" / "agent_sessions.db"
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 
@@ -32,6 +34,19 @@ class ChatResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     service: str
+
+
+class SessionSummary(BaseModel):
+    session_id: str
+    created_at: str | None = None
+    updated_at: str | None = None
+    title: str = "新建会话"
+    message_count: int = 0
+
+
+class SessionMessages(BaseModel):
+    session_id: str
+    messages: list[dict[str, str]]
 
 
 app = FastAPI(
@@ -60,6 +75,92 @@ app.add_middleware(
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse(status="ok", service="photocoach")
+
+
+def _message_text(payload: str) -> tuple[str | None, str | None]:
+    """从 Agents SDK 保存的输入项中提取 UI 可展示的角色和文本。"""
+
+    try:
+        item = json.loads(payload)
+    except json.JSONDecodeError:
+        return None, None
+    role = item.get("role")
+    if role == "user" and isinstance(item.get("content"), str):
+        return "user", item["content"]
+    if role == "assistant" and isinstance(item.get("content"), list):
+        texts = [
+            str(block.get("text", ""))
+            for block in item["content"]
+            if isinstance(block, dict) and block.get("type") in {"output_text", "text"}
+        ]
+        text = "\n".join(part for part in texts if part).strip()
+        return ("assistant", text) if text else (None, None)
+    return None, None
+
+
+def _session_rows(limit: int) -> list[SessionSummary]:
+    if not SESSION_DB.exists():
+        return []
+    try:
+        conn = sqlite3.connect(str(SESSION_DB))
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT session_id, created_at, updated_at FROM agent_sessions "
+            "ORDER BY updated_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        summaries: list[SessionSummary] = []
+        for row in rows:
+            messages = conn.execute(
+                "SELECT message_data FROM agent_messages WHERE session_id = ? ORDER BY id ASC",
+                (row["session_id"],),
+            ).fetchall()
+            title = "新建会话"
+            for message in messages:
+                role, text = _message_text(message["message_data"])
+                if role == "user" and text:
+                    title = text[:28] + ("…" if len(text) > 28 else "")
+                    break
+            summaries.append(
+                SessionSummary(
+                    session_id=row["session_id"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                    title=title,
+                    message_count=len(messages),
+                )
+            )
+        conn.close()
+        return summaries
+    except sqlite3.OperationalError:
+        return []
+
+
+@app.get("/api/v1/sessions", response_model=list[SessionSummary])
+async def list_sessions(limit: int = 30) -> list[SessionSummary]:
+    return _session_rows(max(1, min(limit, 100)))
+
+
+@app.get("/api/v1/sessions/{session_id}/messages", response_model=SessionMessages)
+async def session_messages(session_id: str) -> SessionMessages:
+    safe_session_id = _safe_session_id(session_id)
+    if not SESSION_DB.exists():
+        return SessionMessages(session_id=safe_session_id, messages=[])
+    try:
+        conn = sqlite3.connect(str(SESSION_DB))
+        rows = conn.execute(
+            "SELECT message_data FROM agent_messages WHERE session_id = ? ORDER BY id ASC",
+            (safe_session_id,),
+        ).fetchall()
+        conn.close()
+    except sqlite3.OperationalError:
+        rows = []
+    messages: list[dict[str, str]] = []
+    for row in rows:
+        role, text = _message_text(row[0])
+        if role and text:
+            messages.append({"role": role, "content": text})
+    return SessionMessages(session_id=safe_session_id, messages=messages)
 
 
 def _safe_session_id(value: str) -> str:
