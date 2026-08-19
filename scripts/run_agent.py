@@ -14,12 +14,14 @@ def main() -> None:
     parser.add_argument("--text", required=True, help="用户的摄影问题")
     parser.add_argument("--image", default=None, help="可选图片路径")
     parser.add_argument("--session-id", default="default", help="会话 ID")
+    parser.add_argument("--user-id", default=None, help="可选用户 ID，用于跨会话长期记忆")
     args = parser.parse_args()
 
     request = AgentRequest(
         text=args.text,
         images=[args.image] if args.image else [],
         session_id=args.session_id,
+        user_id=args.user_id,
     )
     result = asyncio.run(run_photo_agent(request))
     print(f"session_id={result.session_id}")

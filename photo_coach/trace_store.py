@@ -23,6 +23,7 @@ class TraceRecord(BaseModel):
     duration_ms: int
     retry_count: int = 0
     failure_type: str | None = None
+    guard_checks: list[dict[str, Any]] = Field(default_factory=list)
     tool_calls: list[dict[str, Any]] = Field(default_factory=list)
     usage: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None

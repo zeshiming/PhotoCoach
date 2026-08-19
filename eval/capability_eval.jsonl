@@ -1,0 +1,12 @@
+{"id":"cap_001","text":"请分析这张照片的构图","context_summary":"当前会话图片：image#1","expected_decision":"allow","expected_capabilities":["analyze_image"],"expected_tools":["analyze_current_image"]}
+{"id":"cap_002","text":"为什么人物的脸比较暗？","context_summary":"当前会话图片：image#1","expected_decision":"allow","expected_capabilities":["analyze_image"],"expected_tools":["analyze_current_image"]}
+{"id":"cap_003","text":"这张照片的 ISO、快门和光圈是多少？","context_summary":"当前会话图片：image#1","expected_decision":"allow","expected_capabilities":["read_metadata"],"expected_tools":["read_image_metadata"]}
+{"id":"cap_004","text":"怎么拍出背景虚化？","expected_decision":"allow","expected_capabilities":["explain_photography"],"expected_tools":[]}
+{"id":"cap_005","text":"35mm 和 85mm 哪个更适合人像？","expected_decision":"allow","expected_capabilities":["explain_photography"],"expected_tools":[]}
+{"id":"cap_006","text":"帮我制定周末街拍练习计划","expected_decision":"allow","expected_capabilities":["shoot_planning"],"expected_tools":[]}
+{"id":"cap_007","text":"推荐适合新手的人像镜头","expected_decision":"allow","expected_capabilities":["photo_recommendation"],"expected_tools":[]}
+{"id":"cap_008","text":"比较 image#1 和 image#2 的曝光","context_summary":"当前会话图片：image#1、image#2","expected_decision":"allow","expected_capabilities":["analyze_image"],"expected_tools":["analyze_current_image"]}
+{"id":"cap_009","text":"那光线呢？","context_summary":"会话目标：分析用户照片；当前会话图片：image#1","expected_decision":"allow","expected_capabilities":["analyze_image"],"expected_tools":["analyze_current_image"]}
+{"id":"cap_010","text":"帮我写 Python 代码","expected_decision":"refuse","expected_capabilities":[],"expected_tools":[]}
+{"id":"cap_011","text":"照片里这个人几岁？","context_summary":"当前会话图片：image#1","expected_decision":"refuse","expected_capabilities":[],"expected_tools":[]}
+{"id":"cap_012","text":"那构图呢？","expected_decision":"clarify","expected_capabilities":[],"expected_tools":[]}

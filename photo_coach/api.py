@@ -6,6 +6,7 @@ import os
 import re
 import json
 import sqlite3
+import traceback
 import uuid
 from pathlib import Path
 
@@ -23,6 +24,7 @@ UPLOAD_ROOT = PROJECT_ROOT / "data" / "uploads"
 WEB_ROOT = PROJECT_ROOT / "web"
 SESSION_DB = PROJECT_ROOT / "data" / "agent_sessions.db"
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
+API_ERROR_LOG = PROJECT_ROOT / "data" / "api_errors.jsonl"
 
 
 class ChatResponse(BaseModel):
@@ -186,6 +188,22 @@ async def delete_session(session_id: str) -> DeleteSessionResponse:
         conn.execute("DELETE FROM agent_messages WHERE session_id = ?", (safe_session_id,))
         conn.execute("DELETE FROM agent_sessions WHERE session_id = ?", (safe_session_id,))
         conn.execute("DELETE FROM session_images WHERE session_id = ?", (safe_session_id,))
+        try:
+            conn.execute(
+                "DELETE FROM session_scope_state WHERE session_id = ?",
+                (safe_session_id,),
+            )
+        except sqlite3.OperationalError:
+            # 兼容 Scope Memory 尚未初始化的旧数据库。
+            pass
+        try:
+            conn.execute(
+                "DELETE FROM session_summaries WHERE session_id = ?",
+                (safe_session_id,),
+            )
+        except sqlite3.OperationalError:
+            # 兼容长期记忆尚未初始化的旧数据库。
+            pass
         conn.commit()
         conn.close()
         return DeleteSessionResponse(session_id=safe_session_id, deleted=True)
@@ -196,6 +214,29 @@ async def delete_session(session_id: str) -> DeleteSessionResponse:
 def _safe_session_id(value: str) -> str:
     normalized = re.sub(r"[^a-zA-Z0-9_.-]", "_", value.strip())
     return normalized[:100] or "default"
+
+
+def _redact_error(value: str) -> str:
+    """移除常见 API Key / Bearer Token，避免错误日志泄漏凭证。"""
+
+    value = re.sub(r"sk-[A-Za-z0-9_-]{8,}", "sk-***", value)
+    value = re.sub(r"(?i)bearer\s+\S+", "Bearer ***", value)
+    return value
+
+
+def _record_api_error(error_id: str, session_id: str, exc: Exception) -> None:
+    """保存可检索的服务端错误；客户端只拿到 error_id。"""
+
+    API_ERROR_LOG.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "error_id": error_id,
+        "session_id": session_id,
+        "error_type": type(exc).__name__,
+        "error": _redact_error(str(exc)),
+        "traceback": _redact_error("".join(traceback.format_exception(exc))),
+    }
+    with API_ERROR_LOG.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 async def _save_image(session_id: str, image: UploadFile) -> str:
@@ -220,6 +261,7 @@ async def _save_image(session_id: str, image: UploadFile) -> str:
 async def chat(
     message: str = Form(default=""),
     session_id: str = Form(default="default"),
+    user_id: str | None = Form(default=None),
     image: UploadFile | None = File(default=None),
 ) -> ChatResponse:
     safe_session_id = _safe_session_id(session_id)
@@ -236,14 +278,16 @@ async def chat(
                 text=text,
                 images=image_refs,
                 session_id=safe_session_id,
+                user_id=user_id.strip() if user_id else None,
             )
         )
     except Exception as exc:
-        # 对外不返回 Key、Base URL 或完整 SDK 堆栈；详细信息由进程日志记录。
-        print(f"PhotoCoach request failed: {type(exc).__name__}: {exc}")
+        # 对外不返回 Key、Base URL 或完整 SDK 堆栈，只返回可关联的错误编号。
+        error_id = uuid.uuid4().hex[:12]
+        _record_api_error(error_id, safe_session_id, exc)
         raise HTTPException(
             status_code=502,
-            detail="模型服务暂时不可用，请稍后重试。",
+            detail=f"模型服务暂时不可用，请稍后重试。错误编号：{error_id}",
         ) from exc
 
     return ChatResponse(

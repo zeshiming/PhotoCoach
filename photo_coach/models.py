@@ -12,6 +12,7 @@ class AgentRequest(BaseModel):
     text: str = ""
     images: list[str] = Field(default_factory=list)
     session_id: str | None = None
+    user_id: str | None = None
 
     @property
     def has_image(self) -> bool:
