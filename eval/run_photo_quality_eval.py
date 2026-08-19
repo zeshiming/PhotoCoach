@@ -49,7 +49,19 @@ def resolve_images(images: list[str]) -> list[str]:
 def _text_from_turn(case: dict[str, Any]) -> str:
     if "turns" not in case:
         return case.get("text", "")
-    return case["turns"][-1].get("text", "")
+    return "\n".join(
+        f"第 {index} 轮：{turn.get('text', '')}"
+        for index, turn in enumerate(case["turns"], start=1)
+    )
+
+
+def _images_from_case(case: dict[str, Any]) -> list[str]:
+    if "turns" not in case:
+        return case.get("images", [])
+    for turn in reversed(case["turns"]):
+        if turn.get("images"):
+            return turn["images"]
+    return []
 
 
 async def run_text_baseline(case: dict[str, Any], config: LLMConfig) -> str:
@@ -75,9 +87,7 @@ async def run_text_baseline(case: dict[str, Any], config: LLMConfig) -> str:
 
 
 async def run_vision_baseline(case: dict[str, Any], config: LLMConfig) -> str:
-    images = case.get("images", [])
-    if "turns" in case:
-        images = case["turns"][-1].get("images", [])
+    images = _images_from_case(case)
     provider = GLMVisionProvider.from_env()
     observations = []
     for image in resolve_images(images):
