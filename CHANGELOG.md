@@ -39,6 +39,7 @@
 - 增加 Capability 与 Tool Exposure 评测。
 - 增加 40 条摄影专项评测数据结构，当前使用公开 CC0 图片素材。
 - 增加数据集校验脚本和 61 个本地测试。
+- 增加 `run_photo_quality_eval.py`，支持 text、vision、photo-coach 三种基线模式，支持按 split 和 limit 控制真实 API 评测成本。
 
 ### 尚未包含
 
