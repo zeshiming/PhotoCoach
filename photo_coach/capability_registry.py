@@ -40,6 +40,14 @@ class CapabilityRegistry:
             names.update(self.specs[capability_id].tools)
         return names
 
+    def capability_for_tool(self, tool_name: str) -> str | None:
+        """返回一个 Tool 的主能力，用于执行前的错配检测。"""
+
+        for spec in self.specs.values():
+            if tool_name in spec.tools:
+                return spec.id
+        return None
+
     def prompt_text(self) -> str:
         lines = ["可选择的 Capability（只能从以下 ID 中选择）："]
         for spec in self.specs.values():

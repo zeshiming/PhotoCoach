@@ -64,7 +64,7 @@ class AgentsSdkAppTests(unittest.TestCase):
             context.analysis_done = True
             self.assertFalse(vision_tool_enabled(wrapper, None))
 
-    def test_dynamic_tool_exposure_uses_selected_capability(self):
+    def test_selected_capability_keeps_multiturn_tool_fallback_available(self):
         with tempfile.TemporaryDirectory() as directory:
             context = PhotoAgentContext(
                 session_id="s1",
@@ -73,7 +73,9 @@ class AgentsSdkAppTests(unittest.TestCase):
                 selected_capabilities=["read_metadata"],
             )
             wrapper = type("Wrapper", (), {"context": context})()
-            self.assertFalse(vision_tool_enabled(wrapper, None))
+            # 多轮历史可能包含上一轮 Tool Call，不能让 SDK 直接报 Tool disabled；
+            # 错误能力选择由 Tool Input Guard 反馈给模型重新规划。
+            self.assertTrue(vision_tool_enabled(wrapper, None))
             self.assertTrue(metadata_tool_enabled(wrapper, None))
 
     def test_run_result_contains_session_id(self):

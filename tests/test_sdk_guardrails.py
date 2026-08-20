@@ -29,6 +29,13 @@ class SDKGuardrailTests(unittest.TestCase):
         self.assertEqual(result.output_info["reason_code"], "sensitive_inference")
         self.assertIn("敏感", result.output_info["reason"])
 
+    def test_explicit_photography_request_with_sensitive_boundary_is_allowed(self):
+        result = self._run_guard(
+            "分析摄影表现，不要推断这个人的年龄和真实身份。",
+            "image#1",
+        )
+        self.assertFalse(result.tripwire_triggered)
+
     def test_missing_deictic_image_reference_is_blocked(self):
         result = self._run_guard("这张照片为什么脸很暗")
         self.assertTrue(result.tripwire_triggered)

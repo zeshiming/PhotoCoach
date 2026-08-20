@@ -251,7 +251,15 @@ def hard_rule_check(
             reason_code="image_without_request",
             message="图片已收到，请说明你希望分析构图、光线、曝光还是后期。",
         )
-    if has_any_image and any(item in text for item in policy.sensitive_topics):
+    safe_sensitive_context = any(
+        marker in text
+        for marker in ("不要推断", "不推断", "不涉及", "不判断", "不能判断", "无法判断")
+    )
+    if (
+        has_any_image
+        and any(item in text for item in policy.sensitive_topics)
+        and not safe_sensitive_context
+    ):
         return ScopeResult(
             decision=ScopeDecision.REFUSE,
             scope="restricted",
@@ -361,8 +369,9 @@ def vision_tool_enabled(
 ) -> bool:
     """每轮最多允许一次图片分析工具调用，避免模型重复调用。"""
 
-    capability_allowed = not context.context.selected_capabilities or "analyze_image" in context.context.selected_capabilities
-    return capability_allowed and bool(
+    # 多轮会话中，模型历史可能再次引用上一轮 Tool。保留两个只读 Tool 可见，
+    # 由 photo_tool_scope_guard 做能力错配拦截，避免 SDK 直接报 Tool disabled。
+    return bool(
         context.context.active_image_id or context.context.available_image_ids
     ) and not context.context.analysis_done
 
@@ -373,8 +382,7 @@ def metadata_tool_enabled(
 ) -> bool:
     """只有存在图片且本轮尚未读取元数据时才开放元数据工具。"""
 
-    capability_allowed = not context.context.selected_capabilities or "read_metadata" in context.context.selected_capabilities
-    return capability_allowed and bool(
+    return bool(
         context.context.active_image_id or context.context.available_image_ids
     ) and not context.context.metadata_done
 
@@ -413,6 +421,24 @@ async def photo_tool_scope_guard(data: Any) -> ToolGuardrailFunctionOutput:
                 "reason_code": "tool_permission_denied",
                 "message": state.permission_policy.reason(tool_context.tool_name),
             }
+        )
+    required_capability = state.capability_registry.capability_for_tool(
+        tool_context.tool_name
+    )
+    if (
+        state.selected_capabilities
+        and required_capability
+        and required_capability not in state.selected_capabilities
+    ):
+        # 不直接终止 Runner：把错配反馈给模型，让它重新选择本轮能力对应的 Tool。
+        return ToolGuardrailFunctionOutput.reject_content(
+            "当前工具与本轮任务能力不匹配，请重新选择合适的摄影工具。",
+            output_info={
+                "decision": "clarify",
+                "reason_code": "capability_tool_mismatch",
+                "expected_capabilities": state.selected_capabilities,
+                "tool_capability": required_capability,
+            },
         )
     try:
         tool_arguments = json.loads(tool_context.tool_arguments or "{}")
